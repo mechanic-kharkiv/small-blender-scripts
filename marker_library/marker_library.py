@@ -7,6 +7,8 @@ bl_info = {
     'blender': (2, 80, 0),
     'location': 'Properties > Scene > Marker Library panel',
     'description': 'Stores scene markers in library named items to restore them later.',
+    'wiki_url': "https://github.com/mechanic-kharkiv/small-blender-scripts/tree/master/marker_library",
+    'tracker_url': "https://github.com/mechanic-kharkiv/small-blender-scripts/issues",
     'support': 'COMMUNITY',
     "category": "Scene",
 }
