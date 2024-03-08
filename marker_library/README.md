@@ -83,6 +83,7 @@ You can disable or remove the add-on in the 'Add-ons' section of the 'Preference
   - v2.68a (windows 64 bit);
   - v2.76b (windows 64 bit);
   - v2.92 (windows 64 bit);
+  - v4.0.2 (windows 64 bit);
 
   In other versions of blender this will probably work, but be prepared for surprises.
 
