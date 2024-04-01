@@ -2,7 +2,7 @@
 
 Here, in this repository I store some small scripts related to [blender](https://www.blender.org/), which someone might find useful.
 
-Each one is in its dedicated sub-directory. The sub-directories may have additional readme files inside.
+Each one is in its dedicated sub-directory. The sub-directories may have additional README.md files inside.
 
 
 ## Feedback ##
