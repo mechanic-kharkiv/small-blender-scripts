@@ -2,28 +2,31 @@
 
 ### Description ###
 
-  This add-on allows batch import of fbx files in the given directory. It uses a named preset, saved ahead in standard blender fbx importer (`io_scene_fbx`).
+This add-on patches the embedded blender fbx importer (`io_scene_fbx`) in memory to allow it to import multiple selected fbx files into the current scene.
 
-  It also marks imported objects with special property `fbxpath` to allow other scripts to know what exactly were loaded from where.
+Optionally each imported object receives a property `fbxpath` with the original source file full path.
+It tags objects, armature and mesh data blocks, and actions.
+
+  > id_data objects like `Object`, `Mesh`, `Armature` get a custom property, but for `Action` it adds a property also called `fbxpath`. So in scrips you'd rather use `action.fbxpath` instead of `action["fbxpath"]`.
 
   > The embedded `io_scene.fbx` since 4.20.2 (blender 2.81.6) already supports multiple files,
 but with no tag adding. So, let it be. :-)
 
 ### Usage ###
 
-  If you need non-default fbx import settings, first you need to invoke the standard importer `File > Import > FBX (.fbx)`, set desired settings and save them as a named preset.
+  Install the add-on, enable it.
 
-  Next you Execute `File > Import > FBX batch import (directory, preset)`, set your preset, and directory to import from. When you run import it will import all fbx files in this directory.
+  Next time you invoke `File > Import > FBX (.fbx)` you will face the new checkboxes (`Add 'fbxpath' tags`, `Verbose`) in the import dialog which means you have your standard fbx importer patched.
 
 ### Installation ###
 
-Add-on consists of few files in the directory **fbx_batch_import**:
-    - \__init__.py
-    - classes27.py
-    - classes28.py
-    - presets.py
+Add-on consists of single file **fbx_batch_import_patch.py**.
 
-To install it you need to pack these files **along with the directory `fbx_batch_import`** into a zip archive (an archive name may be arbitrary), then follow the standard installation procedure with the 'Install from file' button in the 'Add-ons' section of the 'Preferences' dialog.
+You can install it in two ways:
+
+  1. open in blender's text editor, and run (*Text => Run Script <Alt+P>*) (this will install the add-on for the current session only);
+
+  2. use the standard installation procedure with the 'Install from file' button in the 'Add-ons' section of the 'Preferences' dialog (this type of installation is permanent);
 
   > If your blender version is far from 2.80, it may warn you about versions mismatch - don't worry, it's deliberately contrived this way. If you're able to enable the add-on with the checkbox, this warning is about nothing at all.
 
