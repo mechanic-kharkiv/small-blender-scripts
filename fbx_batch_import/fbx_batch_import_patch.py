@@ -11,7 +11,7 @@ but with no tag adding. So, let it be. :-)
 Created on Jan 28, 2024
 
 @author: (c) LIX A.S. Mechanic.Kharkiv
-@last_edit: 2024-04-19
+@last_edit: 2024-04-20
 '''
 # DONE: sort out the version tag usage to keep it compatible with 2.7x and newer
 #   we just use 2.80: older complain, but allow it; the newer just accept.
@@ -23,10 +23,13 @@ bl_info = {
     "author": "(c) LIX A.S. Mechanic.Kharkiv",
     "version": (2, 0, 0),
     "blender": (2, 80, 0),
-    "location": "File > Import",
-    "description": "Patches standard fbx importer to handle multiple files and tag imported stuff.",
+    "location": "File > Import > FBX (.fbx)",
+    "description": "Patches standard fbx importer to handle multiple files and tag the imported stuff.",
     "support": 'COMMUNITY',
     "category": "Import-Export",
+    "wiki_url": "https://github.com/mechanic-kharkiv/small-blender-scripts/tree/master/fbx_batch_import",
+    "doc_url": "https://github.com/mechanic-kharkiv/small-blender-scripts/tree/master/fbx_batch_import",
+    "tracker_url": "https://github.com/mechanic-kharkiv/small-blender-scripts/issues",
 }
 
 import sys
