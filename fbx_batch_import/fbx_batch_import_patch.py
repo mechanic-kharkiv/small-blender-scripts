@@ -11,7 +11,7 @@ but with no tag adding. So, let it be. :-)
 Created on Jan 28, 2024
 
 @author: (c) LIX A.S. Mechanic.Kharkiv
-@last_edit: 2024-04-20
+@last_edit: 2024-04-22
 '''
 # DONE: sort out the version tag usage to keep it compatible with 2.7x and newer
 #   we just use 2.80: older complain, but allow it; the newer just accept.
@@ -21,7 +21,7 @@ Created on Jan 28, 2024
 bl_info = {
     "name": "FBX format batch import patch",
     "author": "(c) LIX A.S. Mechanic.Kharkiv",
-    "version": (2, 0, 0),
+    "version": (2, 0, 1),
     "blender": (2, 80, 0),
     "location": "File > Import > FBX (.fbx)",
     "description": "Patches standard fbx importer to handle multiple files and tag the imported stuff.",
@@ -33,13 +33,15 @@ bl_info = {
 }
 
 import sys
-import types
 import ast
 from collections import OrderedDict
 import bpy
 
 FBX_IMPORT_MODULE_NAME = "io_scene_fbx"
 FBX_IMPORT_CLASS_NAME = "ImportFBX"
+MENU_INCLUDE_CLASS_28 = "FBX_PT_import_include"
+
+DEBUG = 0
 
 def load_module_if_not_yet(module_name):
     " if it's not cashed yet, load it. returns the module."
@@ -94,7 +96,7 @@ def iter_patch_points(nd, result, parent=None):
 
     if type(nd) is ast.ClassDef:
         # we look just for one class
-        if nd.name in (FBX_IMPORT_CLASS_NAME, "FBX_PT_import_include"):
+        if nd.name in (FBX_IMPORT_CLASS_NAME, MENU_INCLUDE_CLASS_28):
             descr = AstNode(nd, parent)
             if nd.name  == FBX_IMPORT_CLASS_NAME:
                 result["cls"] = descr
@@ -122,7 +124,10 @@ def iter_patch_points(nd, result, parent=None):
         # we look for class methods
         if nd.name in ("execute","draw") and parent and type(parent.ast) is ast.ClassDef:
             descr = AstNode(nd, parent)
-            result["cls." + nd.name] = descr
+            if nd.name == "draw" and parent.ast.name == MENU_INCLUDE_CLASS_28:
+                result["cls.draw28"] = descr
+            else:
+                result["cls." + nd.name] = descr
             for nd1 in ast.iter_child_nodes(nd):
                 descr.children.extend(iter_patch_points(nd1, result, descr))
             descr.update_line_numbers()
@@ -134,20 +139,34 @@ def iter_patch_points(nd, result, parent=None):
 
 # lines to insert into source_lines
 patch_lines = {
-    "draw_flags" : "layout.prop(self, 'add_tags')\nlayout.prop(self, 'verbose')",
-
-    "draw_flags28" : "layout.prop(operator, 'add_tags')\nlayout.prop(operator, 'verbose')",
+    "draw_flags" : """
+        layout.prop(self, 'add_tags')
+        layout.prop(self, 'action_fake_user')
+        layout.prop(self, 'action_filter_names')
+        layout.prop(self, 'verbose')
+    """,
 
     "files" : 'files = bpy.props.CollectionProperty(name="File Path", type=bpy.types.OperatorFileListElement)',
 
-    "add_tags" : """
+    "prop3" : """
         add_tags = BoolProperty(
             name="Add 'fbxpath' tags",
             description="Add fbxpath property to all imported objects",
             default=True)
+
         """,
 
-    "verbose" : 'verbose = BoolProperty(name="Verbose", default=False, description="Verbose console output")',
+    "prop2" : """
+        action_fake_user = BoolProperty(name="Fake User for Actions", default=True, description="Set fake user for new actions")
+
+        """,
+
+    "prop1" : """
+        action_filter_names = BoolProperty(name="Filter Action Names", default=False, description="Use {object|file} as action name")
+
+        """,
+
+    "prop0" : 'verbose = BoolProperty(name="Verbose", default=False, description="Verbose console output")\n',
 
     "dummy" : """
         class DummyFile(object):
@@ -173,7 +192,8 @@ patch_lines = {
 
         def execute(self, context):
             FBXPATH_TAG_NAME = "fbxpath"
-            keywords = self.as_keywords(ignore=("add_tags", "verbose", "filter_glob", "directory", "ui_tab", "filepath", "files"))
+            keywords = self.as_keywords(ignore=("add_tags", "verbose", "action_fake_user", "action_filter_names",
+                "filter_glob", "directory", "ui_tab", "filepath", "files"))
 
             import os
 
@@ -209,20 +229,12 @@ patch_lines = {
                 actions_list = [obj for obj in bpy.data.actions]
                 cnt_actions += len(new_actions)
 
-                if len(new_objects):
-                    mess = "imported objects: " + ", ".join((obj.name for obj in new_objects))
-                    print(mess)
-                    self.report({'DEBUG'}, mess)
-                if len(new_actions):
-                    mess = "imported actions: " + ", ".join((obj.name for obj in new_actions))
-                    print(mess)
-                    self.report({'DEBUG'}, mess)
-
                 for new_object in new_objects:
-                    if (self.add_tags):
+                    if self.add_tags:
                         # add a custom property with the source path
                         new_object[FBXPATH_TAG_NAME] = path
-                        new_object.data[FBXPATH_TAG_NAME] = path
+                        if new_object.data:
+                            new_object.data[FBXPATH_TAG_NAME] = path
                     # register the new object
                     objects_list.append(new_object)
                     if new_object.type == 'MESH':
@@ -230,10 +242,22 @@ patch_lines = {
                     elif new_object.type == 'ARMATURE':
                         cnt_armatures += 1
 
-                if (self.add_tags):
-                    for new_action in new_actions:
+                for new_action in new_actions:
+                    new_action.use_fake_user = self.action_fake_user
+                    if self.add_tags:
                         # fill the property with the source path
                         setattr(new_action, FBXPATH_TAG_NAME, path)
+                    if self.action_filter_names:
+                        new_action.name = "{}|{}".format(new_action.name.split("|")[0], os.path.splitext(os.path.basename(path))[0])
+
+                if len(new_objects):
+                    mess = "imported objects: " + ", ".join((obj.name for obj in new_objects))
+                    print(mess)
+                    self.report({'DEBUG'}, mess)
+                if len(new_actions):
+                    mess = "imported actions: " + ", ".join((act.name for act in new_actions))
+                    print(mess)
+                    self.report({'DEBUG'}, mess)
 
             mess = "Finished. Imported meshes [{}]; armatures [{}]; actions [{}]; from {} files.".format(
                             cnt_meshes, cnt_armatures, cnt_actions, cnt_files
@@ -282,7 +306,7 @@ def patch_module(module):
             # no node, just a flag
             ss = add_padding(patch_lines["execute"], 0).split("\n")
             if patch_lines["use_cycles"] not in ss:
-                ss = (s if not s.startswith("    keywords = ") else s + "\n" + patch_lines["use_cycles"] for s in ss)
+                ss = (s if not s.startswith("    import os") else patch_lines["use_cycles"] + "\n\n" + s for s in ss)
                 patch_lines["execute"] = "\n".join(ss)
             continue
 
@@ -297,7 +321,7 @@ def patch_module(module):
             src_lines.insert(pp_node.lineno - 1, s)
 
         elif pp_id == "cls.draw":
-            # insert add_tags, verbose checkboxes
+            # insert properties into draw()
             if pp_node.last_lineno - pp_node.lineno > 3:
                 # some have just pass
                 s = add_padding(patch_lines["draw_flags"], pp_node.ast.col_offset + 4)
@@ -305,7 +329,8 @@ def patch_module(module):
 
         elif pp_id == "cls.draw28":
             # insert add_tags, verbose checkboxes
-            s = add_padding(patch_lines["draw_flags28"], pp_node.ast.col_offset + 8)
+            s = add_padding(patch_lines["draw_flags"], pp_node.ast.col_offset + 4)
+            s = s.replace("self", "operator")
             src_lines.insert(pp_node.last_lineno, s)
 
         elif pp_id == "cls.filename_ext":
@@ -316,24 +341,28 @@ def patch_module(module):
                 if bpy.app.version >= (2, 80):
                     s = s.replace(" = ", ": ", 1)
                 src_lines.insert(ln, s)
-            # insert verbose property
-            s = patch_lines["verbose"]
-            if bpy.app.version >= (2, 80):
-                s = s.replace(" = ", ": ", 1)
-            s = add_padding(s, pp_node.ast.col_offset)
-            src_lines.insert(ln, s)
-            # insert add_tags property
-            s = patch_lines["add_tags"]
-            if bpy.app.version >= (2, 80):
-                s = s.replace(" = ", ": ", 1)
-            s = add_padding(s, pp_node.ast.col_offset)
-            src_lines.insert(ln, s)
+
+            # insert "anyway" properties
+            i = 0
+            while True:
+                s = patch_lines.get("prop" + str(i), None)
+                i += 1
+                if not s:
+                    break
+
+                if bpy.app.version >= (2, 80):
+                    s = s.replace(" = ", ": ", 1)
+                s = add_padding(s, pp_node.ast.col_offset)
+                src_lines.insert(ln, s)
 
         elif pp_id == "cls":
             # insert DummyFile class
             s = add_padding(patch_lines["dummy"], pp_node.ast.col_offset)
             # we intentionally skip a line for possible decorator
             src_lines.insert(pp_node.lineno - 2, s)
+
+    if DEBUG:
+        bpy.context.window_manager.clipboard = "\n".join(src_lines)
 
     # using the same module
     code = compile("\n".join(src_lines), filename=module.__file__, mode='exec')
@@ -385,6 +414,7 @@ def uninstall_fbx_hook():
         __import__(FBX_IMPORT_MODULE_NAME)
     try:
         sys.modules[FBX_IMPORT_MODULE_NAME].register()
+        print("Original " + FBX_IMPORT_MODULE_NAME + " have been reloaded.")
     except Exception as e:
         print(e)
 
