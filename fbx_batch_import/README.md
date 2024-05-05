@@ -36,7 +36,7 @@ Also it has some additional options:
 
 ### Installation ###
 
-Add-on consists of single file **fbx_batch_import_patch.py**.
+Add-on consists of single file `fbx_batch_import_patch.py`.
 
 You can install it in two ways:
 
@@ -50,6 +50,8 @@ You can install it in two ways:
 ### Uninstallation ###
 
 You can disable or remove the add-on in the 'Add-ons' section of the 'Preferences' dialog.
+
+On disabling (or uninstalling) it reloads and re-registers the original importer module immediately, there is no need to restart blender or reload scripts.
 
 
 ### Compatibility ###
