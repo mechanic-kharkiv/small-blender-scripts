@@ -21,7 +21,7 @@ Created on Jan 28, 2024
 bl_info = {
     "name": "FBX format batch import patch",
     "author": "(c) LIX A.S. Mechanic.Kharkiv",
-    "version": (2, 1, 0),
+    "version": (2, 1, 1),
     "blender": (2, 80, 0),
     "location": "File > Import > FBX (.fbx)",
     "description": "Patches standard fbx importer to handle multiple files and tag the imported stuff.",
@@ -422,7 +422,17 @@ def uninstall_fbx_hook():
 
 
 def register():
+    if "install_fbx_hook" not in globals():
+        import imp
+        imp.reload(sys.modules[__name__])
     install_fbx_hook()
+    # we will reload it on re-enabling anyway, so let's give the user some more room
+    for name in ("load_module_if_not_yet", "AstNode", "iter_patch_points",
+                 "path_lines", "add_padding", "patch_module", "install_fbx_hook"):
+        try:
+            del globals()[name]
+        except KeyError:
+            pass
 
 def unregister():
     uninstall_fbx_hook()
