@@ -11,7 +11,7 @@ but with no tag adding. So, let it be. :-)
 Created on Jan 28, 2024
 
 @author: (c) LIX A.S. Mechanic.Kharkiv
-@last_edit: 2024-04-22
+@last_edit: 2024-05-07
 '''
 # DONE: sort out the version tag usage to keep it compatible with 2.7x and newer
 #   we just use 2.80: older complain, but allow it; the newer just accept.
@@ -21,7 +21,7 @@ Created on Jan 28, 2024
 bl_info = {
     "name": "FBX format batch import patch",
     "author": "(c) LIX A.S. Mechanic.Kharkiv",
-    "version": (2, 0, 1),
+    "version": (2, 1, 0),
     "blender": (2, 80, 0),
     "location": "File > Import > FBX (.fbx)",
     "description": "Patches standard fbx importer to handle multiple files and tag the imported stuff.",
@@ -234,7 +234,10 @@ patch_lines = {
                         # add a custom property with the source path
                         new_object[FBXPATH_TAG_NAME] = path
                         if new_object.data:
-                            new_object.data[FBXPATH_TAG_NAME] = path
+                            try:
+                                new_object.data[FBXPATH_TAG_NAME] = path
+                            except:
+                                pass
                     # register the new object
                     objects_list.append(new_object)
                     if new_object.type == 'MESH':
@@ -245,8 +248,7 @@ patch_lines = {
                 for new_action in new_actions:
                     new_action.use_fake_user = self.action_fake_user
                     if self.add_tags:
-                        # fill the property with the source path
-                        setattr(new_action, FBXPATH_TAG_NAME, path)
+                        new_action[FBXPATH_TAG_NAME] = path
                     if self.action_filter_names:
                         new_action.name = "{}|{}".format(new_action.name.split("|")[0], os.path.splitext(os.path.basename(path))[0])
 
@@ -420,12 +422,10 @@ def uninstall_fbx_hook():
 
 
 def register():
-    bpy.types.Action.fbxpath = bpy.props.StringProperty(description="imported from")
     install_fbx_hook()
 
 def unregister():
     uninstall_fbx_hook()
-    del bpy.types.Action.fbxpath
 
 if __name__ == "__main__":
     register()
